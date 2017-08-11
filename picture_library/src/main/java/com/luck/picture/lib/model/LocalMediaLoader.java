@@ -213,9 +213,14 @@ public class LocalMediaLoader {
                                         isGif ? SELECT_GIF : SELECT, IMAGE_PROJECTION[0] + " DESC");
                                 break;
                             case PictureConfig.TYPE_VIDEO:
+                                //强行修改为只接收mp4
+                                String videoCondition = MediaStore.Video.Media.MIME_TYPE + " =? and " + getDurationCondition(0, 0);
                                 cursorLoader = new CursorLoader(
                                         activity, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, VIDEO_PROJECTION,
-                                        getDurationCondition(0, 0), null, VIDEO_PROJECTION[0] + " DESC");
+                                        videoCondition, new String[]{"video/mp4"}, VIDEO_PROJECTION[0] + " DESC");
+//                                cursorLoader = new CursorLoader(
+//                                        activity, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, VIDEO_PROJECTION,
+//                                        getDurationCondition(0, 0), null, VIDEO_PROJECTION[0] + " DESC");
                                 break;
                             case PictureConfig.TYPE_AUDIO:
                                 cursorLoader = new CursorLoader(
