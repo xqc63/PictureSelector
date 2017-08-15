@@ -1,21 +1,26 @@
+/*
+ * Copyright 2013 Chris Banes
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 apply plugin: 'maven'
 apply plugin: 'signing'
 
-configurations {
-    deployerJars
-}
-
-repositories {
-    mavenCentral()
-}
-
-// 判断版本是Release or Snapshots
 def isReleaseBuild() {
     return !VERSION.contains("SNAPSHOT");
-//    return false;
 }
 
-// 获取仓库url
 def getRepositoryUrl() {
     return isReleaseBuild() ? RELEASE_URL : SNAPSHOT_URL;
 }
@@ -27,9 +32,9 @@ uploadArchives {
                 MavenDeployment deployment -> signing.signPom(deployment)
             }
 
+            pom.groupId = GROUP
+            pom.artifactId = POM_ARTIFACT_ID
             pom.version = VERSION
-            pom.artifactId = ARTIFACT_ID
-            pom.groupId = GROUP_ID
 
             repository(url: getRepositoryUrl()) {
                 authentication(userName: NAME, password: PASSWORD) // maven授权信息
