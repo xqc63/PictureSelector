@@ -13,8 +13,9 @@ buildscript {
 }
 
 allprojects {
-//    version = VERSION
-//    group = GROUP
+    //必须要加,否则引用的库工程group/version错误
+    version = VERSION
+    group = GROUP_ID
 
     repositories {
         jcenter()
