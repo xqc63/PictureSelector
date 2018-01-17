@@ -64,7 +64,7 @@ import java.util.Locale;
 public class PictureMultiCuttingActivity extends AppCompatActivity {
 
     public static final int DEFAULT_COMPRESS_QUALITY = 90;
-    public static final Bitmap.CompressFormat DEFAULT_COMPRESS_FORMAT = Bitmap.CompressFormat.JPEG;
+    public static final Bitmap.CompressFormat DEFAULT_COMPRESS_FORMAT = Bitmap.CompressFormat.PNG;
 
     public static final int NONE = 0;
     public static final int SCALE = 1;
@@ -388,9 +388,9 @@ public class PictureMultiCuttingActivity extends AppCompatActivity {
         mOverlayView = mUCropView.getOverlayView();
         mGestureCropImageView.setTransformImageListener(mImageListener);
 
-        ((ImageView) findViewById(R.id.image_view_logo)).setColorFilter(mLogoColor, PorterDuff.Mode.SRC_ATOP);
-
-        findViewById(R.id.ucrop_frame).setBackgroundColor(mRootViewBackgroundColor);
+//        ((ImageView) findViewById(R.id.image_view_logo)).setColorFilter(mLogoColor, PorterDuff.Mode.SRC_ATOP);
+//
+//        findViewById(R.id.ucrop_frame).setBackgroundColor(mRootViewBackgroundColor);
     }
 
     private TransformImageView.TransformImageListener mImageListener = new TransformImageView.TransformImageListener() {
@@ -705,10 +705,11 @@ public class PictureMultiCuttingActivity extends AppCompatActivity {
         Bundle extras = getIntent().getExtras();
         String path = cutInfos.get(cutIndex).getPath();
         boolean isHttp = FileUtils.isHttp(path);
+        String imgType = getLastImgType(path);
         Uri uri = isHttp ? Uri.parse(path) : Uri.fromFile(new File(path));
         extras.putParcelable(UCropMulti.EXTRA_INPUT_URI, uri);
         extras.putParcelable(UCropMulti.EXTRA_OUTPUT_URI,
-                Uri.fromFile(new File(getCacheDir(), System.currentTimeMillis() + ".jpg")));
+                Uri.fromFile(new File(getCacheDir(), System.currentTimeMillis() + imgType)));
         intent.putExtras(extras);
         setupViews(intent);
         setInitialState();
@@ -720,6 +721,40 @@ public class PictureMultiCuttingActivity extends AppCompatActivity {
         // 预览图 一页5个,裁剪到第6个的时候滚动到最新位置，不然预览图片看不到
         if (cutIndex >= 5) {
             recyclerView.scrollToPosition(cutIndex);
+        }
+    }
+
+    /**
+     * 获取图片后缀
+     *
+     * @param path
+     * @return
+     */
+    public static String getLastImgType(String path) {
+        try {
+            int index = path.lastIndexOf(".");
+            if (index > 0) {
+                String imageType = path.substring(index, path.length());
+                switch (imageType) {
+                    case ".png":
+                    case ".PNG":
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".JPEG":
+                    case ".WEBP":
+                    case ".bmp":
+                    case ".BMP":
+                    case ".webp":
+                        return imageType;
+                    default:
+                        return ".png";
+                }
+            } else {
+                return ".png";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ".png";
         }
     }
 

@@ -16,6 +16,16 @@
     <application
         android:allowBackup="true"
         android:supportsRtl="true">
+        <provider
+            android:name="com.luck.picture.lib.PictureFileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <activity
             android:name=".PictureSelectorActivity"
             android:screenOrientation="portrait"
@@ -26,14 +36,17 @@
             android:screenOrientation="portrait" />
         <activity
             android:name=".PicturePreviewActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:theme="@style/activity.Theme" />
         <activity
             android:name=".PictureVideoPlayActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
-            android:screenOrientation="sensor" />
+            android:screenOrientation="sensor"
+            android:theme="@style/activity.Theme" />
         <activity
             android:name=".PictureExternalPreviewActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:theme="@style/activity.Theme" />
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"

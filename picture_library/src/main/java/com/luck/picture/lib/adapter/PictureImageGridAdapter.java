@@ -19,7 +19,6 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.luck.picture.lib.R;
 import com.luck.picture.lib.anim.OptAnimationLoader;
@@ -32,11 +31,16 @@ import com.luck.picture.lib.tools.DebugUtil;
 import com.luck.picture.lib.tools.StringUtils;
 import com.luck.picture.lib.tools.VoiceUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by dee on 15/11/19.
+ * author：luck
+ * project：PictureSelector
+ * package：com.luck.picture.lib.adapter
+ * email：893855882@qq.com
+ * data：2016/12/30
  */
 public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final static int DURATION = 450;
@@ -150,7 +154,7 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
             final ViewHolder contentHolder = (ViewHolder) holder;
             final LocalMedia image = images.get(showCamera ? position - 1 : position);
             image.position = contentHolder.getAdapterPosition();
-            String path = image.getPath();
+            final String path = image.getPath();
             final String pictureType = image.getPictureType();
             contentHolder.ll_check.setVisibility(selectMode ==
                     PictureConfig.SINGLE ? View.GONE : View.VISIBLE);
@@ -172,10 +176,8 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
                 contentHolder.tv_duration.setVisibility(picture == PictureConfig.TYPE_VIDEO
                         ? View.VISIBLE : View.GONE);
             }
-            int width = image.getWidth();
-            int height = image.getHeight();
-            int h = width * 5;
-            contentHolder.tv_long_chart.setVisibility(height > h ? View.VISIBLE : View.GONE);
+            boolean eqLongImg = PictureMimeType.isLongImg(image);
+            contentHolder.tv_long_chart.setVisibility(eqLongImg ? View.VISIBLE : View.GONE);
             long duration = image.getDuration();
             contentHolder.tv_duration.setText(DateUtils.timeParse(duration));
             if (mimeType == PictureMimeType.ofAudio()) {
@@ -194,13 +196,18 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
                         .asBitmap()
                         .load(path)
                         .apply(options)
-                        .transition(new BitmapTransitionOptions().crossFade(500))
                         .into(contentHolder.iv_picture);
             }
             if (enablePreview || enablePreviewVideo || enablePreviewAudio) {
                 contentHolder.ll_check.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+                        // 如原图路径不存在或者路径存在但文件不存在
+                        if (!new File(path).exists()) {
+                            Toast.makeText(context, context.getString(R.string.picture_error), Toast.LENGTH_LONG)
+                                    .show();
+                            return;
+                        }
                         changeCheckboxState(contentHolder, image);
                     }
                 });
@@ -209,7 +216,12 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
             contentHolder.contentView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-
+                    // 如原图路径不存在或者路径存在但文件不存在
+                    if (!new File(path).exists()) {
+                        Toast.makeText(context, context.getString(R.string.picture_error), Toast.LENGTH_LONG)
+                                .show();
+                        return;
+                    }
                     if (picture == PictureConfig.TYPE_IMAGE && (enablePreview
                             || selectMode == PictureConfig.SINGLE)) {
                         int index = showCamera ? position - 1 : position;

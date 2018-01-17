@@ -8,8 +8,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.MediaStore;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -39,7 +39,6 @@ import com.luck.picture.lib.permissions.RxPermissions;
 import com.luck.picture.lib.rxbus2.RxBus;
 import com.luck.picture.lib.rxbus2.Subscribe;
 import com.luck.picture.lib.rxbus2.ThreadMode;
-import com.luck.picture.lib.tools.AttrsUtils;
 import com.luck.picture.lib.tools.DateUtils;
 import com.luck.picture.lib.tools.DebugUtil;
 import com.luck.picture.lib.tools.DoubleUtils;
@@ -61,10 +60,14 @@ import java.util.List;
 import io.reactivex.Observer;
 import io.reactivex.disposables.Disposable;
 
+
 public class PictureSelectorActivity extends PictureBaseActivity implements View.OnClickListener,
         PictureAlbumDirectoryAdapter.OnItemClickListener,
         PictureImageGridAdapter.OnPhotoSelectChangedListener, PhotoPopupWindow.OnItemClickListener {
     private final static String TAG = PictureSelectorActivity.class.getSimpleName();
+    private static final int SHOW_DIALOG = 0;
+    private static final int DISMISS_DIALOG = 1;
+    private static final int STATUSBAR = 2;
     private ImageView picture_left_back;
     private TextView picture_title, picture_right, picture_tv_ok, tv_empty,
             picture_tv_img_num, picture_id_preview, tv_PlayPause, tv_Stop, tv_Quit,
@@ -78,7 +81,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
     private FolderPopWindow folderWindow;
     private Animation animation = null;
     private boolean anim = false;
-    private int preview_textColor, complete_textColor;
     private RxPermissions rxPermissions;
     private PhotoPopupWindow popupWindow;
     private LocalMediaLoader mediaLoader;
@@ -87,6 +89,23 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
     private boolean isPlayAudio = false;
     private CustomDialog audioDialog;
     private int audioH;
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case SHOW_DIALOG:
+                    showPleaseDialog();
+                    break;
+                case DISMISS_DIALOG:
+                    dismissDialog();
+                    break;
+                case STATUSBAR:
+                    LightStatusBarUtils.setLightStatusBar(PictureSelectorActivity.this, statusFont);
+                    break;
+            }
+        }
+    };
 
     //EventBus 3.0 回调
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -97,7 +116,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                 List<LocalMedia> selectImages = obj.medias;
                 anim = selectImages.size() > 0 ? true : false;
                 int position = obj.position;
-                DebugUtil.i(TAG, "刷新下标::" + position);
                 adapter.bindSelectImages(selectImages);
                 adapter.notifyItemChanged(position);
                 break;
@@ -106,7 +124,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                 if (medias.size() > 0) {
                     // 取出第1个判断是否是图片，视频和图片只能二选一，不必考虑图片和视频混合
                     String pictureType = medias.get(0).getPictureType();
-                    if (isCompress && pictureType.startsWith(PictureConfig.IMAGE)) {
+                    if (config.isCompress && pictureType.startsWith(PictureConfig.IMAGE)) {
                         compressImage(medias);
                     } else {
                         onResult(medias);
@@ -116,6 +134,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
         }
     }
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -123,8 +142,9 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
             RxBus.getDefault().register(this);
         }
         rxPermissions = new RxPermissions(this);
-        LightStatusBarUtils.setLightStatusBar(this, statusFont);
-        if (camera) {
+        mHandler.sendEmptyMessage(STATUSBAR);
+        if (config.camera) {
+            setTheme(R.style.activity_Theme_Transparent);
             if (savedInstanceState == null) {
                 rxPermissions.request(Manifest.permission.READ_EXTERNAL_STORAGE)
                         .subscribe(new Observer<Boolean>() {
@@ -177,40 +197,40 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
         rl_bottom = (RelativeLayout) findViewById(R.id.rl_bottom);
         id_ll_ok = (LinearLayout) findViewById(R.id.id_ll_ok);
         tv_empty = (TextView) findViewById(R.id.tv_empty);
-        rl_bottom.setVisibility(selectionMode == PictureConfig.SINGLE ? View.GONE : View.VISIBLE);
+        rl_bottom.setVisibility(config.selectionMode == PictureConfig.SINGLE ? View.GONE : View.VISIBLE);
         isNumComplete(numComplete);
-        if (mimeType == PictureMimeType.ofAll()) {
+        if (config.mimeType == PictureMimeType.ofAll()) {
             popupWindow = new PhotoPopupWindow(this);
             popupWindow.setOnItemClickListener(this);
         }
         picture_id_preview.setOnClickListener(this);
-        if (mimeType == PictureMimeType.ofAudio()) {
+        if (config.mimeType == PictureMimeType.ofAudio()) {
             picture_id_preview.setVisibility(View.GONE);
             audioH = ScreenUtils.getScreenHeight(mContext)
                     + ScreenUtils.getStatusBarHeight(mContext);
         } else {
-            picture_id_preview.setVisibility(mimeType == PictureConfig.TYPE_VIDEO
+            picture_id_preview.setVisibility(config.mimeType == PictureConfig.TYPE_VIDEO
                     ? View.GONE : View.VISIBLE);
         }
         picture_left_back.setOnClickListener(this);
         picture_right.setOnClickListener(this);
         id_ll_ok.setOnClickListener(this);
         picture_title.setOnClickListener(this);
-        String title = mimeType == PictureMimeType.ofAudio() ?
+        String title = config.mimeType == PictureMimeType.ofAudio() ?
                 getString(R.string.picture_all_audio)
                 : getString(R.string.picture_camera_roll);
         picture_title.setText(title);
-        folderWindow = new FolderPopWindow(this, mimeType);
+        folderWindow = new FolderPopWindow(this, config.mimeType);
         folderWindow.setPictureTitleView(picture_title);
         folderWindow.setOnItemClickListener(this);
         picture_recycler.setHasFixedSize(true);
-        picture_recycler.addItemDecoration(new GridSpacingItemDecoration(spanCount,
+        picture_recycler.addItemDecoration(new GridSpacingItemDecoration(config.imageSpanCount,
                 ScreenUtils.dip2px(this, 2), false));
-        picture_recycler.setLayoutManager(new GridLayoutManager(this, spanCount));
+        picture_recycler.setLayoutManager(new GridLayoutManager(this, config.imageSpanCount));
         // 解决调用 notifyItemChanged 闪烁问题,取消默认动画
         ((SimpleItemAnimator) picture_recycler.getItemAnimator())
                 .setSupportsChangeAnimations(false);
-        mediaLoader = new LocalMediaLoader(this, mimeType, isGif, videoSecond);
+        mediaLoader = new LocalMediaLoader(this, config.mimeType, config.isGif, config.videoMaxSecond, config.videoMinSecond);
         rxPermissions.request(Manifest.permission.READ_EXTERNAL_STORAGE)
                 .subscribe(new Observer<Boolean>() {
                     @Override
@@ -219,12 +239,11 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
 
                     @Override
                     public void onNext(Boolean aBoolean) {
-                        showPleaseDialog();
                         if (aBoolean) {
+                            mHandler.sendEmptyMessage(SHOW_DIALOG);
                             readLocalMedia();
                         } else {
                             showToast(getString(R.string.picture_jurisdiction));
-                            dismissDialog();
                         }
                     }
 
@@ -236,26 +255,21 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     public void onComplete() {
                     }
                 });
-        tv_empty.setText(mimeType == PictureMimeType.ofAudio() ?
+        tv_empty.setText(config.mimeType == PictureMimeType.ofAudio() ?
                 getString(R.string.picture_audio_empty)
                 : getString(R.string.picture_empty));
-        StringUtils.tempTextFont(tv_empty, mimeType);
+        StringUtils.tempTextFont(tv_empty, config.mimeType);
         if (savedInstanceState != null) {
             // 防止拍照内存不足时activity被回收，导致拍照后的图片未选中
             selectionMedias = PictureSelector.obtainSelectorList(savedInstanceState);
-            preview_textColor = savedInstanceState.getInt("preview_textColor");
-            complete_textColor = savedInstanceState.getInt("complete_textColor");
-        } else {
-            preview_textColor = AttrsUtils.getTypeValueColor(this, R.attr.picture_preview_textColor);
-            complete_textColor = AttrsUtils.getTypeValueColor(this, R.attr.picture_complete_textColor);
         }
         adapter = new PictureImageGridAdapter(mContext, config);
         adapter.setOnPhotoSelectChangedListener(PictureSelectorActivity.this);
         adapter.bindSelectImages(selectionMedias);
         picture_recycler.setAdapter(adapter);
         String titleText = picture_title.getText().toString().trim();
-        if (isCamera) {
-            isCamera = StringUtils.isCamera(titleText);
+        if (config.isCamera) {
+            config.isCamera = StringUtils.isCamera(titleText);
         }
     }
 
@@ -263,8 +277,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         if (adapter != null) {
-            outState.putInt("preview_textColor", preview_textColor);
-            outState.putInt("complete_textColor", complete_textColor);
             List<LocalMedia> selectedImages = adapter.getSelectedImages();
             PictureSelector.saveSelectorList(outState, selectedImages);
         }
@@ -274,7 +286,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
      * none number style
      */
     private void isNumComplete(boolean numComplete) {
-        picture_tv_ok.setText(numComplete ? getString(R.string.picture_done_front_num, 0, maxSelectNum)
+        picture_tv_ok.setText(numComplete ? getString(R.string.picture_done_front_num, 0, config.maxSelectNum)
                 : getString(R.string.picture_please_select));
         if (!numComplete) {
             animation = AnimationUtils.loadAnimation(this, R.anim.modal_in);
@@ -311,7 +323,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     tv_empty.setVisibility(images.size() > 0
                             ? View.INVISIBLE : View.VISIBLE);
                 }
-                dismissDialog();
+                mHandler.sendEmptyMessage(DISMISS_DIALOG);
             }
         });
     }
@@ -321,8 +333,8 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
      */
     public void startCamera() {
         // 防止快速点击，但是单独拍照不管
-        if (!DoubleUtils.isFastDoubleClick() || camera) {
-            switch (mimeType) {
+        if (!DoubleUtils.isFastDoubleClick() || config.camera) {
+            switch (config.mimeType) {
                 case PictureConfig.TYPE_ALL:
                     // 如果是全部类型下，单独拍照就默认图片 (因为单独拍照不会new此PopupWindow对象)
                     if (popupWindow != null) {
@@ -356,9 +368,10 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
     public void startOpenCamera() {
         Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (cameraIntent.resolveActivity(getPackageManager()) != null) {
+            int type = config.mimeType == PictureConfig.TYPE_ALL ? PictureConfig.TYPE_IMAGE : config.mimeType;
             File cameraFile = PictureFileUtils.createCameraFile(this,
-                    mimeType == PictureConfig.TYPE_ALL ? PictureConfig.TYPE_IMAGE : mimeType,
-                    outputCameraPath);
+                    type,
+                    outputCameraPath, config.suffixType);
             cameraPath = cameraFile.getAbsolutePath();
             Uri imageUri = parUri(cameraFile);
             cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
@@ -372,15 +385,15 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
     public void startOpenCameraVideo() {
         Intent cameraIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
         if (cameraIntent.resolveActivity(getPackageManager()) != null) {
-            File cameraFile = PictureFileUtils.createCameraFile(this, mimeType ==
-                            PictureConfig.TYPE_ALL ? PictureConfig.TYPE_VIDEO : mimeType,
-                    outputCameraPath);
+            File cameraFile = PictureFileUtils.createCameraFile(this, config.mimeType ==
+                            PictureConfig.TYPE_ALL ? PictureConfig.TYPE_VIDEO : config.mimeType,
+                    outputCameraPath, config.suffixType);
             cameraPath = cameraFile.getAbsolutePath();
             Uri imageUri = parUri(cameraFile);
-            DebugUtil.i(TAG, "video second:" + recordVideoSecond);
+            DebugUtil.i(TAG, "video second:" + config.recordVideoSecond);
             cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-            cameraIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, recordVideoSecond);
-            cameraIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, videoQuality);
+            cameraIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, config.recordVideoSecond);
+            cameraIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, config.videoQuality);
             startActivityForResult(cameraIntent, PictureConfig.REQUEST_CAMERA);
         }
     }
@@ -400,8 +413,8 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     Intent cameraIntent = new Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION);
                     if (cameraIntent.resolveActivity(getPackageManager()) != null) {
                         File cameraFile = PictureFileUtils.createCameraFile
-                                (PictureSelectorActivity.this, mimeType,
-                                        outputCameraPath);
+                                (PictureSelectorActivity.this, config.mimeType,
+                                        outputCameraPath, config.suffixType);
                         cameraPath = cameraFile.getAbsolutePath();
                         Uri imageUri = parUri(cameraFile);
                         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
@@ -484,22 +497,22 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
             // 如果设置了图片最小选择数量，则判断是否满足条件
             int size = images.size();
             boolean eqImg = pictureType.startsWith(PictureConfig.IMAGE);
-            if (minSelectNum > 0 && selectionMode == PictureConfig.MULTIPLE) {
-                if (size < minSelectNum) {
-                    String str = eqImg ? getString(R.string.picture_min_img_num, minSelectNum)
-                            : getString(R.string.picture_min_video_num, minSelectNum);
+            if (config.minSelectNum > 0 && config.selectionMode == PictureConfig.MULTIPLE) {
+                if (size < config.minSelectNum) {
+                    String str = eqImg ? getString(R.string.picture_min_img_num, config.minSelectNum)
+                            : getString(R.string.picture_min_video_num, config.minSelectNum);
                     showToast(str);
                     return;
                 }
             }
-            if (enableCrop && eqImg) {
+            if (config.enableCrop && eqImg) {
                 // 是图片和选择压缩并且是多张，调用批量压缩
                 ArrayList<String> medias = new ArrayList<>();
                 for (LocalMedia media : images) {
                     medias.add(media.getPath());
                 }
                 startCrop(medias);
-            } else if (isCompress && eqImg) {
+            } else if (config.isCompress && eqImg) {
                 // 图片才压缩，视频不管
                 compressImage(images);
             } else {
@@ -716,7 +729,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
     @Override
     public void onItemClick(String folderName, List<LocalMedia> images) {
         boolean camera = StringUtils.isCamera(folderName);
-        camera = isCamera ? camera : false;
+        camera = config.isCamera ? camera : false;
         adapter.setShowCamera(camera);
         picture_title.setText(folderName);
         adapter.bindImagesData(images);
@@ -738,7 +751,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     startCamera();
                 } else {
                     showToast(getString(R.string.picture_camera));
-                    if (camera) {
+                    if (config.camera) {
                         closeActivity();
                     }
                 }
@@ -783,8 +796,8 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
         switch (mediaType) {
             case PictureConfig.TYPE_IMAGE:
                 // image
-                if (selectionMode == PictureConfig.SINGLE) {
-                    if (enableCrop) {
+                if (config.selectionMode == PictureConfig.SINGLE) {
+                    if (config.enableCrop) {
                         originalPath = media.getPath();
                         boolean gif = PictureMimeType.isGif(pictureType);
                         if (gif) {
@@ -808,7 +821,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                 break;
             case PictureConfig.TYPE_VIDEO:
                 // video
-                if (selectionMode == PictureConfig.SINGLE) {
+                if (config.selectionMode == PictureConfig.SINGLE) {
                     result.add(media);
                     onResult(result);
                 } else {
@@ -818,7 +831,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                 break;
             case PictureConfig.TYPE_AUDIO:
                 // audio
-                if (selectionMode == PictureConfig.SINGLE) {
+                if (config.selectionMode == PictureConfig.SINGLE) {
                     result.add(media);
                     onResult(result);
                 } else {
@@ -838,21 +851,22 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
         // 如果选择的视频没有预览功能
         String pictureType = selectImages.size() > 0
                 ? selectImages.get(0).getPictureType() : "";
-        if (mimeType == PictureMimeType.ofAudio()) {
+        if (config.mimeType == PictureMimeType.ofAudio()) {
             picture_id_preview.setVisibility(View.GONE);
         } else {
             boolean isVideo = PictureMimeType.isVideo(pictureType);
-            picture_id_preview.setVisibility(isVideo ? View.GONE : View.VISIBLE);
+            boolean eqVideo = config.mimeType == PictureConfig.TYPE_VIDEO;
+            picture_id_preview.setVisibility(isVideo || eqVideo ? View.GONE : View.VISIBLE);
         }
         boolean enable = selectImages.size() != 0;
         if (enable) {
             id_ll_ok.setEnabled(true);
             picture_id_preview.setEnabled(true);
-            picture_id_preview.setTextColor(preview_textColor);
-            picture_tv_ok.setTextColor(complete_textColor);
+            picture_id_preview.setSelected(true);
+            picture_tv_ok.setSelected(true);
             if (numComplete) {
                 picture_tv_ok.setText(getString
-                        (R.string.picture_done_front_num, selectImages.size(), maxSelectNum));
+                        (R.string.picture_done_front_num, selectImages.size(), config.maxSelectNum));
             } else {
                 if (!anim) {
                     picture_tv_img_num.startAnimation(animation);
@@ -865,11 +879,10 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
         } else {
             id_ll_ok.setEnabled(false);
             picture_id_preview.setEnabled(false);
-            picture_tv_ok.setTextColor(ContextCompat.getColor(mContext, R.color.tab_color_false));
-            picture_id_preview.setTextColor
-                    (ContextCompat.getColor(mContext, R.color.tab_color_false));
+            picture_id_preview.setSelected(false);
+            picture_tv_ok.setSelected(false);
             if (numComplete) {
-                picture_tv_ok.setText(getString(R.string.picture_done_front_num, 0, maxSelectNum));
+                picture_tv_ok.setText(getString(R.string.picture_done_front_num, 0, config.maxSelectNum));
             } else {
                 picture_tv_img_num.setVisibility(View.INVISIBLE);
                 picture_tv_ok.setText(getString(R.string.picture_please_select));
@@ -888,7 +901,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                 case UCrop.REQUEST_CROP:
                     Uri resultUri = UCrop.getOutput(data);
                     String cutPath = resultUri.getPath();
-                    media = new LocalMedia(originalPath, 0, false, 0, 0, mimeType);
+                    media = new LocalMedia(originalPath, 0, false, 0, 0, config.mimeType);
                     media.setCutPath(cutPath);
                     media.setCut(true);
                     imageType = PictureMimeType.createImageType(cutPath);
@@ -906,7 +919,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                         media.setPath(c.getPath());
                         media.setCutPath(c.getCutPath());
                         media.setPictureType(imageType);
-                        media.setMimeType(mimeType);
+                        media.setMimeType(config.mimeType);
                         medias.add(media);
                     }
                     handlerResult(medias);
@@ -918,7 +931,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
                     String toType = PictureMimeType.fileToType(file);
                     DebugUtil.i(TAG, "camera result:" + toType);
-                    if (mimeType != PictureMimeType.ofAudio()) {
+                    if (config.mimeType != PictureMimeType.ofAudio()) {
                         int degree = PictureFileUtils.readPictureDegree(file.getAbsolutePath());
                         rotateImage(degree, file);
                     }
@@ -929,7 +942,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     boolean eqVideo = toType.startsWith(PictureConfig.VIDEO);
                     int duration = eqVideo ? PictureMimeType.getLocalVideoDuration(cameraPath) : 0;
                     String pictureType = "";
-                    if (mimeType == PictureMimeType.ofAudio()) {
+                    if (config.mimeType == PictureMimeType.ofAudio()) {
                         pictureType = "audio/mpeg";
                         duration = PictureMimeType.getLocalVideoDuration(cameraPath);
                     } else {
@@ -938,17 +951,17 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     }
                     media.setPictureType(pictureType);
                     media.setDuration(duration);
-                    media.setMimeType(mimeType);
+                    media.setMimeType(config.mimeType);
 
                     // 因为加入了单独拍照功能，所有如果是单独拍照的话也默认为单选状态
-                    if (selectionMode == PictureConfig.SINGLE || camera) {
+                    if (config.selectionMode == PictureConfig.SINGLE || config.camera) {
                         // 如果是单选 拍照后直接返回
                         boolean eqImg = toType.startsWith(PictureConfig.IMAGE);
-                        if (enableCrop && eqImg) {
+                        if (config.enableCrop && eqImg) {
                             // 去裁剪
                             originalPath = cameraPath;
                             startCrop(cameraPath);
-                        } else if (isCompress && eqImg) {
+                        } else if (config.isCompress && eqImg) {
                             // 去压缩
                             medias.add(media);
                             compressImage(medias);
@@ -967,12 +980,12 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                         if (adapter != null) {
                             List<LocalMedia> selectedImages = adapter.getSelectedImages();
                             // 没有到最大选择量 才做默认选中刚拍好的
-                            if (selectedImages.size() < maxSelectNum) {
+                            if (selectedImages.size() < config.maxSelectNum) {
                                 pictureType = selectedImages.size() > 0 ? selectedImages.get(0).getPictureType() : "";
                                 boolean toEqual = PictureMimeType.mimeToEqual(pictureType, media.getPictureType());
                                 // 类型相同或还没有选中才加进选中集合中
                                 if (toEqual || selectedImages.size() == 0) {
-                                    if (selectedImages.size() < maxSelectNum) {
+                                    if (selectedImages.size() < config.maxSelectNum) {
                                         selectedImages.add(media);
                                         adapter.bindSelectImages(selectedImages);
                                     }
@@ -989,7 +1002,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                                 ? View.INVISIBLE : View.VISIBLE);
                     }
 
-                    if (mimeType != PictureMimeType.ofAudio()) {
+                    if (config.mimeType != PictureMimeType.ofAudio()) {
                         int lastImageId = getLastImageId(eqVideo);
                         if (lastImageId != -1) {
                             removeImage(lastImageId, eqVideo);
@@ -998,7 +1011,7 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     break;
             }
         } else if (resultCode == RESULT_CANCELED) {
-            if (camera) {
+            if (config.camera) {
                 closeActivity();
             }
         } else if (resultCode == UCrop.RESULT_ERROR) {

@@ -178,6 +178,16 @@ public class PictureSelectionModel {
     }
 
     /**
+     * @param suffixType PictureSelector media format
+     * @return
+     */
+    public PictureSelectionModel imageFormat(String suffixType) {
+        selectionConfig.suffixType = suffixType;
+        return this;
+    }
+
+
+    /**
      * @param cropWidth  crop width
      * @param cropHeight crop height
      * @return
@@ -189,13 +199,23 @@ public class PictureSelectionModel {
     }
 
     /**
-     * @param videoSecond selection video or second
+     * @param videoMaxSecond selection video max second
      * @return
      */
-    public PictureSelectionModel videoSecond(int videoSecond) {
-        selectionConfig.videoSecond = videoSecond * 1000;
+    public PictureSelectionModel videoMaxSecond(int videoMaxSecond) {
+        selectionConfig.videoMaxSecond = videoMaxSecond * 1000;
         return this;
     }
+
+    /**
+     * @param videoMinSecond selection video min second
+     * @return
+     */
+    public PictureSelectionModel videoMinSecond(int videoMinSecond) {
+        selectionConfig.videoMinSecond = videoMinSecond * 1000;
+        return this;
+    }
+
 
     /**
      * @param recordVideoSecond video record second
@@ -239,31 +259,11 @@ public class PictureSelectionModel {
     }
 
     /**
-     * @param compressMode compress mode and  PictureConfig.SYSTEM_COMPRESS_MODE or PictureConfig.LUBAN_COMPRESS_MODE
+     * @param Less than how many KB images are not compressed
      * @return
      */
-    public PictureSelectionModel compressMode(int compressMode) {
-        selectionConfig.compressMode = compressMode;
-        return this;
-    }
-
-    /**
-     * @param width  compress width or PictureSelector compressGrade Luban.CUSTOM_GEAR effective
-     * @param height compress height or PictureSelector compressGrade Luban.CUSTOM_GEAR effective
-     * @return
-     */
-    public PictureSelectionModel compressWH(int width, int height) {
-        selectionConfig.compressWidth = width;
-        selectionConfig.compressHeight = height;
-        return this;
-    }
-
-    /**
-     * @param kb compress max kb or PictureSelector compressGrade Luban.CUSTOM_GEAR effective
-     * @return
-     */
-    public PictureSelectionModel compressMaxKB(int kb) {
-        selectionConfig.compressMaxkB = kb * 1024;
+    public PictureSelectionModel minimumCompressSize(int size) {
+        selectionConfig.minimumCompressSize = size;
         return this;
     }
 
@@ -277,20 +277,29 @@ public class PictureSelectionModel {
     }
 
     /**
-     * @param compressGrade compress and Luban.FIRST_GEAR or Luban.THIRD_GEAR or Luban.CUSTOM_GEAR
-     * @return
-     */
-    public PictureSelectionModel compressGrade(int compressGrade) {
-        selectionConfig.compressGrade = compressGrade;
-        return this;
-    }
-
-    /**
      * @param isCompress Whether to open compress
      * @return
      */
     public PictureSelectionModel compress(boolean isCompress) {
         selectionConfig.isCompress = isCompress;
+        return this;
+    }
+
+    /**
+     * @param synOrAsy Synchronous or asynchronous compression
+     * @return
+     */
+    public PictureSelectionModel synOrAsy(boolean synOrAsy) {
+        selectionConfig.synOrAsy = synOrAsy;
+        return this;
+    }
+
+    /**
+     * @param compress save path
+     * @return
+     */
+    public PictureSelectionModel compressSavePath(String path) {
+        selectionConfig.compressSavePath = path;
         return this;
     }
 

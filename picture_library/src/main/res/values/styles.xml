@@ -23,6 +23,13 @@
         <item name="android:windowBackground">@android:color/white</item>
     </style>
 
+    <style name="activity.Theme.Transparent" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="windowActionBar">true</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
     <style name="picture_alert_dialog" parent="android:Theme.Dialog">
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowIsTranslucent">false</item>
@@ -74,7 +81,7 @@
         <!--标题栏右边文字-->
         <item name="picture.right.textColor">@color/white</item>
         <!--图片列表勾选样式-->
-        <item name="picture.checked.style">@drawable/checkbox_selector</item>
+        <item name="picture.checked.style">@drawable/picture_checkbox_selector</item>
         <!--开启图片列表勾选数字模式-->
         <item name="picture.style.checkNumMode">false</item>
         <!--选择图片样式0/9-->
@@ -82,15 +89,15 @@
         <!--图片列表底部背景色-->
         <item name="picture.bottom.bg">@color/color_fa</item>
         <!--图片列表预览文字颜色-->
-        <item name="picture.preview.textColor">@color/tab_color_true</item>
+        <item name="picture.preview.textColor">@color/picture_list_text_color</item>
         <!--图片列表已完成文字颜色-->
-        <item name="picture.complete.textColor">@color/tab_color_true</item>
+        <item name="picture.complete.textColor">@color/picture_list_text_color</item>
         <!--图片已选数量圆点背景色-->
         <item name="picture.num.style">@drawable/num_oval</item>
         <!--预览界面标题文字颜色-->
         <item name="picture.ac_preview.title.textColor">@color/white</item>
         <!--预览界面已完成文字颜色-->
-        <item name="picture.ac_preview.complete.textColor">@color/tab_color_true</item>
+        <item name="picture.ac_preview.complete.textColor">@color/picture_preview_text_color</item>
         <!--预览界面标题栏背景色-->
         <item name="picture.ac_preview.title.bg">@color/bar_grey</item>
         <!--预览界面底部背景色-->

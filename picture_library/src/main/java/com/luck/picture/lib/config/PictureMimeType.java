@@ -4,6 +4,7 @@ package com.luck.picture.lib.config;
 import android.media.MediaMetadataRetriever;
 import android.text.TextUtils;
 
+import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.tools.DebugUtil;
 
 import java.io.File;
@@ -42,14 +43,21 @@ public final class PictureMimeType {
             case "image/webp":
             case "image/WEBP":
             case "image/gif":
+            case "image/bmp":
             case "image/GIF":
+            case "imagex-ms-bmp":
                 return PictureConfig.TYPE_IMAGE;
             case "video/3gp":
             case "video/3gpp":
+            case "video/3gpp2":
             case "video/avi":
             case "video/mp4":
-            case "video/mov":
+            case "video/quicktime":
             case "video/x-msvideo":
+            case "video/x-matroska":
+            case "video/mpeg":
+            case "video/webm":
+            case "video/mp2ts":
                 return PictureConfig.TYPE_VIDEO;
             case "audio/mpeg":
             case "audio/x-ms-wma":
@@ -59,6 +67,8 @@ public final class PictureMimeType {
             case "audio/aac":
             case "audio/mp4":
             case "audio/quicktime":
+            case "audio/lamr":
+            case "audio/3gpp":
                 return PictureConfig.TYPE_AUDIO;
         }
         return PictureConfig.TYPE_IMAGE;
@@ -105,10 +115,15 @@ public final class PictureMimeType {
         switch (pictureType) {
             case "video/3gp":
             case "video/3gpp":
+            case "video/3gpp2":
             case "video/avi":
             case "video/mp4":
-            case "video/mov":
+            case "video/quicktime":
             case "video/x-msvideo":
+            case "video/x-matroska":
+            case "video/mpeg":
+            case "video/webm":
+            case "video/mp2ts":
                 return true;
         }
         return false;
@@ -145,11 +160,12 @@ public final class PictureMimeType {
                 return "video/mp4";
             } else if (name.endsWith(".PNG") || name.endsWith(".png") || name.endsWith(".jpeg")
                     || name.endsWith(".gif") || name.endsWith(".GIF") || name.endsWith(".jpg")
-                    || name.endsWith(".webp") || name.endsWith(".WEBP") || name.endsWith(".JPEG")) {
+                    || name.endsWith(".webp") || name.endsWith(".WEBP") || name.endsWith(".JPEG")
+                    || name.endsWith(".bmp")) {
                 return "image/jpeg";
             } else if (name.endsWith(".mp3") || name.endsWith(".amr")
                     || name.endsWith(".aac") || name.endsWith(".war")
-                    || name.endsWith(".flac")) {
+                    || name.endsWith(".flac") || name.endsWith(".lamr")) {
                 return "audio/mpeg";
             }
         }
@@ -233,4 +249,58 @@ public final class PictureMimeType {
         }
         return duration;
     }
+
+    /**
+     * 是否是长图
+     *
+     * @param media
+     * @return true 是 or false 不是
+     */
+    public static boolean isLongImg(LocalMedia media) {
+        if (null != media) {
+            int width = media.getWidth();
+            int height = media.getHeight();
+            int h = width * 3;
+            return height > h;
+        }
+        return false;
+    }
+
+    /**
+     * 获取图片后缀
+     *
+     * @param path
+     * @return
+     */
+    public static String getLastImgType(String path) {
+        try {
+            int index = path.lastIndexOf(".");
+            if (index > 0) {
+                String imageType = path.substring(index, path.length());
+                switch (imageType) {
+                    case ".png":
+                    case ".PNG":
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".JPEG":
+                    case ".WEBP":
+                    case ".bmp":
+                    case ".BMP":
+                    case ".webp":
+                        return imageType;
+                    default:
+                        return ".png";
+                }
+            } else {
+                return ".png";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ".png";
+        }
+    }
+
+    public final static String JPEG = ".JPEG";
+
+    public final static String PNG = ".png";
 }
