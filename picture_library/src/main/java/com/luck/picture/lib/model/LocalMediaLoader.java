@@ -37,12 +37,6 @@ public class LocalMediaLoader {
     private static final Uri QUERY_URI = MediaStore.Files.getContentUri("external");
     private static final String DURATION = "duration";
     private static final int AUDIO_DURATION = 500;// 过滤掉小于500毫秒的录音
-    private int type = PictureConfig.TYPE_IMAGE;
-    private FragmentActivity activity;
-    private boolean isGif;
-    private long videoMaxS = 0;
-    private long videoMinS = 0;
-
     private final static String[] IMAGE_PROJECTION = {
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DATA,
@@ -53,7 +47,6 @@ public class LocalMediaLoader {
             MediaStore.Images.Media.MIME_TYPE,
             MediaStore.Images.Media.SIZE,
     };
-
     private final static String[] VIDEO_PROJECTION = {
             MediaStore.Video.Media._ID,
             MediaStore.Video.Media.DATA,
@@ -64,8 +57,6 @@ public class LocalMediaLoader {
             MediaStore.Video.Media.MIME_TYPE,
             MediaStore.Video.Media.DURATION,
     };
-
-
     private static final String[] PROJECTION = {
             MediaStore.Files.FileColumns._ID,
             MediaStore.MediaColumns.DATA,
@@ -77,7 +68,6 @@ public class LocalMediaLoader {
             MediaStore.MediaColumns.WIDTH,
             MediaStore.MediaColumns.HEIGHT,
     };
-
     private final static String[] AUDIO_PROJECTION = {
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.DATA,
@@ -88,7 +78,6 @@ public class LocalMediaLoader {
             MediaStore.Audio.Media.MIME_TYPE,
             MediaStore.Audio.Media.DURATION,
     };
-
     /**
      * 查询全部图片和视频，并且过滤掉已损坏图片和视频
      */
@@ -98,13 +87,10 @@ public class LocalMediaLoader {
                     + MediaStore.Files.FileColumns.MEDIA_TYPE + "=?)"
                     + " AND " + MediaStore.MediaColumns.SIZE + ">0"
                     + " AND " + MediaStore.MediaColumns.WIDTH + ">0";
-
-
     private static final String[] SELECTION_ALL_ARGS = {
             String.valueOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE),
             String.valueOf(MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO),
     };
-
     /**
      * 只查询图片条件
      */
@@ -114,15 +100,12 @@ public class LocalMediaLoader {
                     + MediaStore.Images.Media.MIME_TYPE + "=?" + " or "
                     + MediaStore.Images.Media.MIME_TYPE + "=?)" + " AND "
                     + MediaStore.MediaColumns.WIDTH + ">0";
-
     private final static String[] SELECT_GIF = {
             "image/jpeg",
             "image/png",
             "image/gif",
             "image/webp"
     };
-
-
     /**
      * 获取全部图片，但过滤掉gif
      */
@@ -131,13 +114,11 @@ public class LocalMediaLoader {
                     + MediaStore.Images.Media.MIME_TYPE + "=?" + " or "
                     + MediaStore.Images.Media.MIME_TYPE + "=?)" + " AND "
                     + MediaStore.MediaColumns.WIDTH + ">0";
-
     private final static String[] SELECT = {
             "image/jpeg",
             "image/png",
             "image/webp"
     };
-
     /**
      * 获取全部图片和视频，但过滤掉gif图片
      */
@@ -152,16 +133,18 @@ public class LocalMediaLoader {
 
                     + " AND " + MediaStore.MediaColumns.SIZE + ">0"
                     + " AND " + MediaStore.MediaColumns.WIDTH + ">0";
-
     private static final String[] SELECTION_NOT_GIF_ARGS = {
             "image/jpeg",
             "image/png",
             "image/webp",
             String.valueOf(MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO),
     };
-
-
     private static final String ORDER_BY = MediaStore.Files.FileColumns._ID + " DESC";
+    private int type = PictureConfig.TYPE_IMAGE;
+    private FragmentActivity activity;
+    private boolean isGif;
+    private long videoMaxS = 0;
+    private long videoMinS = 0;
 
     public LocalMediaLoader(FragmentActivity activity, int type, boolean isGif, long videoMaxS, long videoMinS) {
         this.activity = activity;
@@ -217,7 +200,7 @@ public class LocalMediaLoader {
                                 String videoCondition = MediaStore.Video.Media.MIME_TYPE + " =? and " + getDurationCondition(0, 0);
                                 cursorLoader = new CursorLoader(
                                         activity, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, VIDEO_PROJECTION,
-                                        videoCondition, new String[]{"video/mp4"}, VIDEO_PROJECTION[0] + " DESC");
+                                        videoCondition, new String[]{"video/mp4"}, VIDEO_PROJECTION[3] + " DESC");
 //                                cursorLoader = new CursorLoader(
 //                                        activity, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, VIDEO_PROJECTION,
 //                                        getDurationCondition(0, 0), null, VIDEO_PROJECTION[0] + " DESC");
@@ -331,10 +314,6 @@ public class LocalMediaLoader {
         return newFolder;
     }
 
-    public interface LocalMediaLoadListener {
-        void loadComplete(List<LocalMediaFolder> folders);
-    }
-
     private String getDurationCondition(long exMaxLimit, long exMinLimit) {
         long maxS = videoMaxS == 0 ? Long.MAX_VALUE : videoMaxS;
         if (exMaxLimit != 0) maxS = Math.min(maxS, exMaxLimit);
@@ -343,5 +322,9 @@ public class LocalMediaLoader {
                 Math.max(exMinLimit, videoMinS),
                 Math.max(exMinLimit, videoMinS) == 0 ? "" : "=",
                 maxS);
+    }
+
+    public interface LocalMediaLoadListener {
+        void loadComplete(List<LocalMediaFolder> folders);
     }
 }
